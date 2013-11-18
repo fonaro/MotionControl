@@ -23,7 +23,6 @@ public class MjpegActivity extends GenericCameraActivity {
 		AnimatedBitmapView mv = (AnimatedBitmapView) findViewById(R.id.mjpegView);
 		TextView fpsTextView = (TextView) findViewById(R.id.fpsTextView);
 
-		mv.setDisplayMode(AnimatedBitmapView.SIZE_BEST_FIT);
 		mv.setFpsView(fpsTextView);
 		mv.showFps(true);
 		mv.startPlayback(new AnimationStreamProducer() {

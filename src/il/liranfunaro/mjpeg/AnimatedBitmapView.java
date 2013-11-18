@@ -18,10 +18,6 @@ import android.widget.TextView;
 public class AnimatedBitmapView extends SurfaceView implements SurfaceHolder.Callback {
 	static final String TAG = "AnimatedBitmapView";
 
-	public final static int SIZE_STANDARD = 1;
-	public final static int SIZE_BEST_FIT = 4;
-	public final static int SIZE_FULLSCREEN = 8;
-
 	private AnimationTask task = new AnimationTask();
 	boolean showFps = false;
 	private final AtomicBoolean playing = new AtomicBoolean(false);
@@ -31,7 +27,6 @@ public class AnimatedBitmapView extends SurfaceView implements SurfaceHolder.Cal
 	
 	int dispWidth;
 	int dispHeight;
-	int displayMode;
 	
 	SurfaceHolder holder;
 	
@@ -128,37 +123,35 @@ public class AnimatedBitmapView extends SurfaceView implements SurfaceHolder.Cal
 		showFps = b;
 	}
 
-	public void setDisplayMode(int s) {
-		displayMode = s;
-	}
-	
 	private Rect calculateDestinationRect(Bitmap bitmap) {
 		return calculateDestinationRect(bitmap.getWidth(), bitmap.getHeight());
 	}
 
 	private Rect calculateDestinationRect(int bitmapWidth, int bitmapHeight) {
-		switch(displayMode) {
-		case AnimatedBitmapView.SIZE_BEST_FIT:
-			float bitmapAspectRation = (float) bitmapWidth / (float) bitmapHeight;
+		Rect result = new Rect();
+		
+		double bitmapAspectRation = (double) bitmapWidth / (double) bitmapHeight;
+		
+		// Try full width
+		bitmapWidth = dispWidth;
+		bitmapHeight = (int) ((double)dispWidth / bitmapAspectRation);
+		
+		if (bitmapHeight < dispHeight) {
+			result.left = 0;
+			result.right = dispWidth;
+			result.top = (dispHeight - bitmapHeight) / 2;
+			result.bottom = result.top + bitmapHeight;
+		} else {
+			bitmapHeight = dispHeight;
+			bitmapWidth = (int) ((double)dispHeight * bitmapAspectRation);
 			
-			bitmapWidth = dispWidth;
-			bitmapHeight = (int) (dispWidth / bitmapAspectRation);
-			
-			if (bitmapHeight > dispHeight) {
-				bitmapHeight = dispHeight;
-				bitmapWidth = (int) (dispHeight * bitmapAspectRation);
-			}
-			
-		case AnimatedBitmapView.SIZE_STANDARD:
-			int left = (dispWidth / 2) - (bitmapWidth / 2);
-			int top = (dispHeight / 2) - (bitmapHeight / 2);
-			return new Rect(left, top, left + bitmapWidth, top + bitmapHeight);
-			
-		case AnimatedBitmapView.SIZE_FULLSCREEN:
-			return new Rect(0, 0, dispWidth, dispHeight);
+			result.top = 0;
+			result.bottom = bitmapHeight;
+			result.left = (dispWidth - bitmapWidth) / 2;
+			result.right = result.left + bitmapWidth;
 		}
 		
-		return null;
+		return result;
 	}
 	
 	public interface AnimationStreamProducer {
