@@ -25,6 +25,7 @@ public class HostListAdapter extends BaseExpandableListAdapter {
 	private final Context context;
 	private final Activity itsActivity;
 	private final int myAppWidgetId;
+	private final boolean isForWidget;
 	
 	protected HostPreferences[] hosts;
 	protected MotionHostClient[] hostsClient;
@@ -33,6 +34,7 @@ public class HostListAdapter extends BaseExpandableListAdapter {
 		this.itsActivity = activity;
 		this.context = itsActivity.getApplicationContext();
 		this.myAppWidgetId = myAppWidgetId;
+		this.isForWidget = myAppWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID;
 		
 		updateHosts(false);
 	}
@@ -81,90 +83,88 @@ public class HostListAdapter extends BaseExpandableListAdapter {
 	public long getChildId(int groupPosition, int childPosition) {
 		return getCombinedChildId(groupPosition, childPosition);
 	}
-
+	
 	@Override
 	public View getChildView(final int groupPosition, final int childPosition,
 			boolean isLastChild, View convertView, ViewGroup parent) {
-		if (convertView == null) {
-			LayoutInflater inflater = itsActivity.getLayoutInflater();
-			convertView = inflater.inflate(R.layout.camera, null);
-		}
-		
-		TextView item = (TextView) convertView.findViewById(R.id.cameraNumber);
-		ImageButton refreshBtn = (ImageButton) convertView.findViewById(R.id.refreshCamera);
-		ImageButton settingsBtn = (ImageButton) convertView.findViewById(R.id.cameraConfiguration);
-		
-		refreshBtn.setOnClickListener(new OnClickListener() {
-			
-			@Override
-			public void onClick(View v) {
-				hostsClient[groupPosition] = null;
-				notifyDataSetChanged();
-			}
-		});
-		
 		HostStatus hostStatus = hostsClient[groupPosition].getHostStatus();
 		ArrayList<String> availibleCamera = hostsClient[groupPosition].getAvalibleCameras();
 		
-		final String cameraNumber = availibleCamera == null ? null : availibleCamera.get(childPosition); 
+		String cameraNumber = availibleCamera == null ? null : availibleCamera.get(childPosition); 
+		
+		ChildState state;
+		String message = null;
 		
 		switch (hostStatus) {
 		case UNAUTHORIZED:
 		case UNAVALIBLE:
-			item.setText(hostStatus.getUserMessage());
+			state = ChildState.ERROR;
+			message = hostStatus.getUserMessage();
 			break;
 		default:
 			if(cameraNumber != null) {
-				item.setText("Camera #" + cameraNumber);
-				
-				settingsBtn.setOnClickListener(new OnClickListener() {
-					
-					@Override
-					public void onClick(View v) {
-						Intent intent = new Intent(context, CameraConfigurationActivity.class);
-						GenericCameraActivity.setIntentParameters(intent, hosts[groupPosition].getUUID(), cameraNumber);
-						itsActivity.startActivity(intent);
-					}
-				});
-				
-				settingsBtn.setVisibility(View.VISIBLE);
-				
+				state = ChildState.READY;
 			} else {
-				item.setText("Loading...");
-				
-				settingsBtn.setVisibility(View.INVISIBLE);
+				state = ChildState.LOADING;
 			}
 		}
 		
-		if(myAppWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID && cameraNumber != null) {
-			convertView.setOnClickListener(new OnClickListener() {
-				
-				@Override
-				public void onClick(View v) {
-					MotionWidget.setWidgetPreferences(context, myAppWidgetId, hosts[groupPosition].getUUID().toString(), cameraNumber);
-					MotionWidget.onUpdateWidget(context, myAppWidgetId);
-					
-					Intent resultValue = new Intent();
-					resultValue.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,
-							myAppWidgetId);
-					itsActivity.setResult(Activity.RESULT_OK, resultValue);
-					itsActivity.finish();
-				}
-			});
+		return getChildView(groupPosition, childPosition, state, message,
+				cameraNumber, convertView, parent);
+	}
+	
+	public static enum ChildState {
+		LOADING, READY, ERROR
+	}
+	
+	public View getChildView(final int groupPosition, int childPosition,
+			ChildState state, String message, final String cameraNumber,
+			View convertView, ViewGroup parent) {
+		if (convertView == null) {
+			LayoutInflater inflater = itsActivity.getLayoutInflater();
+			convertView = inflater.inflate(R.layout.camera, null);
 			convertView.setClickable(true);
-		} else {
-			convertView.setOnClickListener(new OnClickListener() {
-				
-				@Override
-				public void onClick(View v) {
-					Intent intent = new Intent(context, MjpegActivity.class);
-					GenericCameraActivity.setIntentParameters(intent, hosts[groupPosition].getUUID(), cameraNumber);
-					itsActivity.startActivity(intent);
-				}
-			});
-			convertView.setClickable(true);
-//			convertView.setClickable(false);
-//			convertView.setOnClickListener(null);
+		}
+		
+		TextView textView = (TextView) convertView.findViewById(R.id.cameraNumber);
+		ImageButton refreshBtn = (ImageButton) convertView.findViewById(R.id.refreshCamera);
+		ImageButton settingsBtn = (ImageButton) convertView.findViewById(R.id.cameraConfiguration);
+		
+		switch (state) {
+		case ERROR:
+			textView.setText(message);
+			refreshBtn.setVisibility(View.VISIBLE);
+			settingsBtn.setVisibility(View.INVISIBLE);
+			
+			refreshBtn.setOnClickListener(new OnHostRefreshListner(groupPosition));
+			refreshBtn.setImageResource(R.drawable.ic_action_refresh);
+			
+			settingsBtn.setOnClickListener(null);
+			
+			convertView.setOnClickListener(null);
+			break;
+		case LOADING:
+			textView.setText("Loading...");
+			refreshBtn.setVisibility(View.INVISIBLE);
+			settingsBtn.setVisibility(View.INVISIBLE);
+			
+			refreshBtn.setOnClickListener(null);
+			settingsBtn.setOnClickListener(null);
+			
+			convertView.setOnClickListener(null);
+			break;
+		case READY:
+			textView.setText("Camera " + cameraNumber);
+			refreshBtn.setVisibility(View.VISIBLE);
+			settingsBtn.setVisibility(View.VISIBLE);
+			
+			refreshBtn.setOnClickListener(null);
+			refreshBtn.setImageResource(R.drawable.ic_action_camera);
+			settingsBtn.setOnClickListener(new OnCameraSettingsListner(groupPosition, cameraNumber));
+			
+			convertView.setOnClickListener(isForWidget ?
+					new OnWidgetSelectCameraListner(groupPosition, cameraNumber) : 
+					new OnMainSelectCameraListner(groupPosition, cameraNumber));
 		}
 		
 		return convertView;
@@ -176,8 +176,6 @@ public class HostListAdapter extends BaseExpandableListAdapter {
 			hostsClient[groupPosition] = 
 					new MotionHostClient(hosts[groupPosition], GeneralPreferences.getConnectionTimeout(context));
 		}
-		
-		Log.i("getChildrenCount", "" + groupPosition);
 		
 		ArrayList<String> availibleCamera = hostsClient[groupPosition].getAvalibleCameras();
 		if(availibleCamera != null) {
@@ -235,20 +233,14 @@ public class HostListAdapter extends BaseExpandableListAdapter {
 		
 		final HostPreferences host = hosts[groupPosition];
 		
-		final ImageButton button = (ImageButton) convertView.findViewById(R.id.editHost);
-        button.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-            	host.edit(itsActivity);
-            }
-        });
-		
+		ImageButton editHostButton = (ImageButton) convertView.findViewById(R.id.editHost);
 		TextView hostNameView = (TextView) convertView.findViewById(R.id.hostName);
-        hostNameView.setText(host.getName());
-        
 		TextView hostUrl = (TextView) convertView.findViewById(R.id.hostUrl);
-		hostUrl.setText(host.getExternalHost().getHost());
-		
 		TextView hostUsername = (TextView) convertView.findViewById(R.id.hostUsername);
+		
+        editHostButton.setOnClickListener(new OnEditHostListner(groupPosition));
+        hostNameView.setText(host.getName());
+		hostUrl.setText(host.getExternalHost().getHost());
 		hostUsername.setText(host.getUsername());
         
         return convertView;
@@ -264,4 +256,91 @@ public class HostListAdapter extends BaseExpandableListAdapter {
 		ArrayList<String> availibleCamera = hostsClient[groupPosition].getAvalibleCameras();
 		return availibleCamera != null;
 	}
+	
+	public class OnHostRefreshListner implements OnClickListener {
+		
+		private final int groupPosition;
+		
+		public OnHostRefreshListner(int groupPosition) {
+			this.groupPosition = groupPosition;
+		}
+		
+		@Override
+		public void onClick(View v) {
+			hostsClient[groupPosition] = null;
+			notifyDataSetChanged();
+		}
+	}
+	
+	public class OnCameraSettingsListner implements OnClickListener {
+		
+		private final int groupPosition;
+		private final String cameraNumber;
+		
+		public OnCameraSettingsListner(int groupPosition, String cameraNumber) {
+			this.groupPosition = groupPosition;
+			this.cameraNumber = cameraNumber;
+		}
+		
+		@Override
+		public void onClick(View v) {
+			Intent intent = new Intent(context, CameraConfigurationActivity.class);
+			GenericCameraActivity.setIntentParameters(intent, hosts[groupPosition].getUUID(), cameraNumber);
+			itsActivity.startActivity(intent);
+		}
+	}
+	
+	public class OnWidgetSelectCameraListner implements OnClickListener {
+		
+		private final int groupPosition;
+		private final String cameraNumber;
+		
+		public OnWidgetSelectCameraListner(int groupPosition, String cameraNumber) {
+			this.groupPosition = groupPosition;
+			this.cameraNumber = cameraNumber;
+		}
+		
+		@Override
+		public void onClick(View v) {
+			MotionWidget.setWidgetPreferences(context, myAppWidgetId, hosts[groupPosition].getUUID().toString(), cameraNumber);
+			MotionWidget.onUpdateWidget(context, myAppWidgetId);
+			
+			Intent resultValue = new Intent();
+			resultValue.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,
+					myAppWidgetId);
+			itsActivity.setResult(Activity.RESULT_OK, resultValue);
+			itsActivity.finish();
+		}
+	}
+	
+	public class OnMainSelectCameraListner implements OnClickListener {
+		
+		private final int groupPosition;
+		private final String cameraNumber;
+		
+		public OnMainSelectCameraListner(int groupPosition, String cameraNumber) {
+			this.groupPosition = groupPosition;
+			this.cameraNumber = cameraNumber;
+		}
+		
+		@Override
+		public void onClick(View v) {
+			Intent intent = new Intent(context, MjpegActivity.class);
+			GenericCameraActivity.setIntentParameters(intent, hosts[groupPosition].getUUID(), cameraNumber);
+			itsActivity.startActivity(intent);
+		}
+	}
+	
+	public class OnEditHostListner implements OnClickListener {
+		
+		private final int groupPosition;
+		
+		public OnEditHostListner(int groupPosition) {
+			this.groupPosition = groupPosition;
+		}
+		
+        public void onClick(View v) {
+        	hosts[groupPosition].edit(itsActivity);
+        }
+    }
 }
