@@ -2,18 +2,24 @@ package il.liranfunaro.mjpeg;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Point;
 import android.graphics.Rect;
 import android.os.AsyncTask;
 import android.util.AttributeSet;
 import android.util.Log;
+import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.view.View;
 import android.widget.TextView;
+import android.widget.Toast;
 
 public class AnimatedBitmapView extends SurfaceView implements SurfaceHolder.Callback {
 	static final String TAG = "AnimatedBitmapView";
@@ -29,6 +35,9 @@ public class AnimatedBitmapView extends SurfaceView implements SurfaceHolder.Cal
 	int dispHeight;
 	
 	SurfaceHolder holder;
+	AtomicReference<Bitmap> currentBitmap = new AtomicReference<Bitmap>(null);
+	Point offset = new Point(0,0);
+	Rect desinationRect = new Rect();
 	
 	private int frameCounter = 0;
 	private long start = 0;
@@ -55,6 +64,29 @@ public class AnimatedBitmapView extends SurfaceView implements SurfaceHolder.Cal
 		
 		dispWidth = getWidth();
 		dispHeight = getHeight();
+		setOnTouchListener(new OnTouchListener() {
+			float startX,startY;
+			Point lastOffset = new Point();
+			
+			@Override
+			public boolean onTouch(View v, MotionEvent event) {
+				switch(event.getAction()) {
+				case MotionEvent.ACTION_DOWN:
+					startX = event.getX();
+					startY = event.getY();
+					lastOffset.set(offset.x, offset.y);
+					return true;
+				case MotionEvent.ACTION_MOVE:
+					synchronized (offset) {
+						offset.x = (int) (event.getX() - startX);
+						offset.y = (int) (event.getY() - startY);
+						offset.offset(lastOffset.x, lastOffset.y);
+					}
+					return true;
+				}
+				return false;
+			}
+		});
 	}
 
 	public void startPlayback(AnimationStreamProducer producer) {
@@ -71,9 +103,9 @@ public class AnimatedBitmapView extends SurfaceView implements SurfaceHolder.Cal
 		startPlayback(null);
 	}
 
-	public void stopPlayback() {
+	public void stopPlayback(boolean wait) {
 		if(playing.compareAndSet(true, false)) {
-			while (true) {
+			while (wait) {
 				try {
 					task.get();
 					return;
@@ -91,7 +123,7 @@ public class AnimatedBitmapView extends SurfaceView implements SurfaceHolder.Cal
 	
 	@Override
 	public void surfaceDestroyed(SurfaceHolder holder) {
-		stopPlayback();
+		stopPlayback(true);
 	}
 
 	@Override
@@ -103,14 +135,26 @@ public class AnimatedBitmapView extends SurfaceView implements SurfaceHolder.Cal
 	}
 
 	public void setFrame(Bitmap bitmap) {
+		if(bitmap != null) {
+			currentBitmap.set(bitmap);
+			redraw();
+		}
+	}
+	
+	public void redraw() {
+		final Bitmap bitmap = currentBitmap.get();
+		if(bitmap == null) {
+			return;
+		}
+		
 		synchronized (holder) {
 			Canvas canvas = holder.lockCanvas();
 			
 			try {
-				Rect destRect = calculateDestinationRect(bitmap);
+				calculateDestinationRect(bitmap);
 				
-				//canvas.drawColor(Color.RED);
-				canvas.drawBitmap(bitmap, null, destRect, framePaint);
+				canvas.drawColor(Color.RED);
+				canvas.drawBitmap(bitmap, null, desinationRect, framePaint);
 			} finally {
 				if (canvas != null) {
 					holder.unlockCanvasAndPost(canvas);
@@ -123,13 +167,11 @@ public class AnimatedBitmapView extends SurfaceView implements SurfaceHolder.Cal
 		showFps = b;
 	}
 
-	private Rect calculateDestinationRect(Bitmap bitmap) {
-		return calculateDestinationRect(bitmap.getWidth(), bitmap.getHeight());
+	private void calculateDestinationRect(Bitmap bitmap) {
+		calculateDestinationRect(bitmap.getWidth(), bitmap.getHeight());
 	}
 
-	private Rect calculateDestinationRect(int bitmapWidth, int bitmapHeight) {
-		Rect result = new Rect();
-		
+	private void calculateDestinationRect(int bitmapWidth, int bitmapHeight) {
 		double bitmapAspectRation = (double) bitmapWidth / (double) bitmapHeight;
 		
 		// Try full width
@@ -137,21 +179,21 @@ public class AnimatedBitmapView extends SurfaceView implements SurfaceHolder.Cal
 		bitmapHeight = (int) ((double)dispWidth / bitmapAspectRation);
 		
 		if (bitmapHeight < dispHeight) {
-			result.left = 0;
-			result.right = dispWidth;
-			result.top = (dispHeight - bitmapHeight) / 2;
-			result.bottom = result.top + bitmapHeight;
+			desinationRect.left = 0;
+			desinationRect.right = dispWidth;
+			desinationRect.top = (dispHeight - bitmapHeight) / 2;
+			desinationRect.bottom = desinationRect.top + bitmapHeight;
 		} else {
 			bitmapHeight = dispHeight;
 			bitmapWidth = (int) ((double)dispHeight * bitmapAspectRation);
 			
-			result.top = 0;
-			result.bottom = bitmapHeight;
-			result.left = (dispWidth - bitmapWidth) / 2;
-			result.right = result.left + bitmapWidth;
+			desinationRect.top = 0;
+			desinationRect.bottom = bitmapHeight;
+			desinationRect.left = (dispWidth - bitmapWidth) / 2;
+			desinationRect.right = desinationRect.left + bitmapWidth;
 		}
 		
-		return result;
+		desinationRect.offset(offset.x, offset.y);
 	}
 	
 	public interface AnimationStreamProducer {
@@ -179,11 +221,18 @@ public class AnimatedBitmapView extends SurfaceView implements SurfaceHolder.Cal
 		
 		@Override
 		protected void onProgressUpdate(Integer... progress) {
-			String fps = String.valueOf(progress[0]) + " fps";
-
-			if(fpsTextView != null) {
-				fpsTextView.setText(fps);
+			if(fpsTextView == null) {
+				return;
 			}
+			
+			String fps;
+			if(playing.get() && progress[0] > 0 ) {
+				fps = String.valueOf(progress[0]) + " fps";
+			} else {
+				fps = "Stopped";
+			}
+
+			fpsTextView.setText(fps);
 	     }
 		
 		@Override

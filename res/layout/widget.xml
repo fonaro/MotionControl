@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="fill_parent"
-    android:layout_height="fill_parent"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
     android:background="@drawable/widget_bg"
     android:divider="?android:dividerHorizontal"
     android:orientation="vertical"
@@ -10,14 +10,14 @@
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content" >
-        
+
         <ImageView
-	        android:id="@+id/cameraImage"
-	        android:layout_width="wrap_content"
-	        android:layout_height="wrap_content"
-	        android:layout_alignParentLeft="true"
+            android:id="@+id/cameraImage"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentLeft="true"
             android:layout_alignParentTop="true"
-        	android:src="@drawable/ic_action_camera" />
+            android:src="@drawable/ic_action_camera" />
 
         <TextView
             android:id="@+id/status"
@@ -31,26 +31,25 @@
 
         <ProgressBar
             android:id="@+id/updatingIndicator"
-            android:visibility="gone"
             style="?android:attr/progressBarStyleSmall"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_margin="5sp"
             android:layout_alignBottom="@+id/status"
             android:layout_alignParentRight="true"
-            android:layout_centerVertical="true" />
+            android:layout_centerVertical="true"
+            android:layout_margin="5sp"
+            android:visibility="gone" />
 
         <TextView
             android:id="@+id/lastUpdate"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_alignBottom="@+id/status"
+            android:layout_alignParentRight="true"
+            android:layout_centerVertical="true"
             android:layout_margin="5sp"
             android:text="@string/not_synced"
-            android:textSize="12sp"
-            android:layout_alignBottom="@+id/status"
-			android:layout_alignParentRight="true"
-            android:layout_centerVertical="true" />
-
+            android:textSize="12sp" />
     </RelativeLayout>
 
     <LinearLayout
@@ -69,9 +68,9 @@
             android:layout_gravity="center_horizontal|center_vertical"
             android:layout_weight=".2"
             android:background="?android:attr/selectableItemBackground"
+            android:contentDescription="@string/status"
             android:padding="15dp"
             android:src="@drawable/ic_action_refresh"
-            android:contentDescription="@string/status"
             android:text="@string/status" />
 
         <ImageButton
@@ -81,9 +80,9 @@
             android:layout_gravity="center_horizontal|center_vertical"
             android:layout_weight=".2"
             android:background="?android:attr/selectableItemBackground"
+            android:contentDescription="@string/start"
             android:padding="15dp"
             android:src="@drawable/ic_action_play"
-            android:contentDescription="@string/start"
             android:text="@string/start" />
 
         <ImageButton
@@ -93,9 +92,9 @@
             android:layout_gravity="center_horizontal|center_vertical"
             android:layout_weight=".2"
             android:background="?android:attr/selectableItemBackground"
+            android:contentDescription="@string/pause"
             android:padding="15dp"
             android:src="@drawable/ic_action_pause"
-            android:contentDescription="@string/pause"
             android:text="@string/pause" />
 
         <ImageButton
@@ -105,11 +104,11 @@
             android:layout_gravity="center_horizontal|center_vertical"
             android:layout_weight=".2"
             android:background="?android:attr/selectableItemBackground"
+            android:contentDescription="@string/snapshot"
             android:padding="15dp"
             android:src="@drawable/ic_action_camera"
-            android:contentDescription="@string/snapshot"
             android:text="@string/snapshot" />
-        
+
         <ImageButton
             android:id="@+id/button_livestream"
             android:layout_width="wrap_content"
@@ -117,9 +116,9 @@
             android:layout_gravity="center_horizontal|center_vertical"
             android:layout_weight=".2"
             android:background="?android:attr/selectableItemBackground"
+            android:contentDescription="@string/livestream"
             android:padding="15dp"
             android:src="@drawable/ic_action_video"
-            android:contentDescription="@string/livestream"
             android:text="@string/livestream" />
     </LinearLayout>
 

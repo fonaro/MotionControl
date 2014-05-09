@@ -303,7 +303,8 @@ public class HostListAdapter extends BaseExpandableListAdapter {
 		@Override
 		public void onClick(View v) {
 			MotionWidget.setWidgetPreferences(context, myAppWidgetId, hosts[groupPosition].getUUID().toString(), cameraNumber);
-			MotionWidget.onUpdateWidget(context, myAppWidgetId);
+			MotionWidget.updateWidget(context, myAppWidgetId);
+			MotionWidget.widgetAction(context, myAppWidgetId, MotionWidget.ACTION_WIDGET_STATUS);
 			
 			Intent resultValue = new Intent();
 			resultValue.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,

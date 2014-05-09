@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
-   android:minWidth="250dip"
-   android:minHeight="40dip"
+   android:resizeMode="horizontal"
+   android:minResizeWidth="180dp"
+   android:minHeight="40dp"
+   android:minWidth="250dp"
    android:updatePeriodMillis="3600000"
    android:initialLayout="@layout/widget"
-   android:configure="il.liranfunaro.motion.MainActivity" 
+   android:configure="il.liranfunaro.motion.MainActivity"
+   android:widgetCategory="home_screen" 
 />
 <!--    android:previewImage="@drawable/icon" -->

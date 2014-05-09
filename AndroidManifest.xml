@@ -5,8 +5,8 @@
     android:versionName="2.0" >
 
     <uses-sdk
-        android:minSdkVersion="11"
-        android:targetSdkVersion="18" />
+        android:minSdkVersion="14"
+        android:targetSdkVersion="19" />
 
     <uses-permission android:name="android.permission.INTERNET" />
 
@@ -38,9 +38,9 @@
             android:label="@string/widget_name" >
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-<!--                 <action android:name="il.liranfunaro.motion.MotionWidget.ACTION_WIDGET_STATUS" /> -->
-<!--                 <action android:name="il.liranfunaro.motion.MotionWidget.ACTION_WIDGET_START" /> -->
-<!--                 <action android:name="il.liranfunaro.motion.MotionWidget.ACTION_WIDGET_PAUSE" /> -->
+                <action android:name="il.liranfunaro.motion.MotionWidget.ACTION_WIDGET_STATUS" />
+                <action android:name="il.liranfunaro.motion.MotionWidget.ACTION_WIDGET_START" />
+                <action android:name="il.liranfunaro.motion.MotionWidget.ACTION_WIDGET_PAUSE" />
                 <action android:name="il.liranfunaro.motion.MotionWidget.ACTION_WIDGET_LIVE_STREAM" />
             </intent-filter>
 

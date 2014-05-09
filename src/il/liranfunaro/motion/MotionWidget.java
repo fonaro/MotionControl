@@ -1,6 +1,5 @@
 package il.liranfunaro.motion;
 
-import il.liranfunaro.motion.R;
 import il.liranfunaro.motion.client.CameraStatus;
 import il.liranfunaro.motion.client.MotionCameraClient;
 import il.liranfunaro.motion.exceptions.HostNotExistException;
@@ -19,6 +18,7 @@ import android.os.Bundle;
 import android.text.format.DateFormat;
 import android.view.View;
 import android.widget.RemoteViews;
+import android.widget.Toast;
 
 public class MotionWidget extends AppWidgetProvider {
 	public static final String PREFS_NAME = MotionWidget.class.toString();
@@ -32,78 +32,73 @@ public class MotionWidget extends AppWidgetProvider {
 	public static String ACTION_WIDGET_SNAPSHOT = "ActionWidgetSnapshot";
 	public static String ACTION_WIDGET_LIVE_STREAM = "ActionWidgetLiveStream";
 	public static String STATUS_TEXT_FORMAT = "%s #%s: %s";
+	
+	protected static class ActionHandler {
+		final private Context context;
+		final private AppWidgetManager appWidgetManager;
+		final private int appWidgetId;
+		final private String action;
+		final private RemoteViews remoteViews;
+		
+		public ActionHandler(Context context,
+				AppWidgetManager appWidgetManager, int appWidgetId) {
+			this(context, appWidgetManager, appWidgetId, null);
+		}
+		
+		public ActionHandler(Context context,
+				AppWidgetManager appWidgetManager, int appWidgetId,
+				String action) {
+			super();
+			this.context = context;
+			this.appWidgetManager = appWidgetManager;
+			this.appWidgetId = appWidgetId;
+			this.action = action;
+			remoteViews = new RemoteViews(context.getPackageName(),	R.layout.widget);
+		}
+		
+		protected Intent createActionIntent(String action) {
+			Intent intent = new Intent(context, MotionWidget.class);
+			intent.setAction(action);
+			intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
+			return intent;
+		}
+		
+		protected PendingIntent createActionPendingIntent(String action) {
+			Intent intent = createActionIntent(action);
+			return PendingIntent.getBroadcast(
+					context, 0, intent, PendingIntent.FLAG_CANCEL_CURRENT);
+		}
+		
+		protected void setButtonAction(String action, int viewId) {
+			PendingIntent pendingIntent = createActionPendingIntent(action);
+			remoteViews.setOnClickPendingIntent(viewId, pendingIntent);
+		}
+		
+		public void updateWidget() {
+			setButtonAction(ACTION_WIDGET_STATUS, R.id.button_status);
+			setButtonAction(ACTION_WIDGET_START, R.id.button_start);
+			setButtonAction(ACTION_WIDGET_PAUSE, R.id.button_pause);
+			setButtonAction(ACTION_WIDGET_SNAPSHOT, R.id.button_snapshot);
+			setButtonAction(ACTION_WIDGET_LIVE_STREAM, R.id.button_livestream);
+
+			appWidgetManager.updateAppWidget(appWidgetId, remoteViews);
+		}
+	}
 
 	@Override
 	public void onUpdate(Context context, AppWidgetManager appWidgetManager,
 			int[] appWidgetIds) {
 		for (int id : appWidgetIds) {
-			onUpdateWidget(context, appWidgetManager, id);
+			new ActionHandler(context, appWidgetManager, id).updateWidget();
 		}
 	}
 	
-	public static void onUpdateWidget(Context context, int appWidgetId) {
+	public static void updateWidget(Context context, int appWidgetId) {
 		AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
-		onUpdateWidget(context, appWidgetManager, appWidgetId);
+		new ActionHandler(context, appWidgetManager, appWidgetId).updateWidget();
 	}
-
-	public static void onUpdateWidget(final Context context,
-			final AppWidgetManager appWidgetManager, final int appWidgetId) {
-		Intent statusIntent = new Intent(context, MotionWidget.class);
-		statusIntent.setAction(ACTION_WIDGET_STATUS);
-		statusIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
-
-		Intent startIntent = new Intent(context, MotionWidget.class);
-		startIntent.setAction(ACTION_WIDGET_START);
-		startIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
-
-		Intent pauseIntent = new Intent(context, MotionWidget.class);
-		pauseIntent.setAction(ACTION_WIDGET_PAUSE);
-		pauseIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
-
-		Intent snapshotIntent = new Intent(context, MotionWidget.class);
-		snapshotIntent.setAction(ACTION_WIDGET_SNAPSHOT);
-		snapshotIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
-		
-		Intent liveStreamIntent = new Intent(context, MotionWidget.class);
-		liveStreamIntent.setAction(ACTION_WIDGET_LIVE_STREAM);
-		liveStreamIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
-
-		PendingIntent statusPendingIntent = PendingIntent.getBroadcast(context,
-				appWidgetId, statusIntent, 0);
-		PendingIntent startPendingIntent = PendingIntent.getBroadcast(context,
-				appWidgetId, startIntent, 0);
-		PendingIntent pausePendingIntent = PendingIntent.getBroadcast(context,
-				appWidgetId, pauseIntent, 0);
-		PendingIntent snapshotPendingIntent = PendingIntent.getBroadcast(
-				context, appWidgetId, snapshotIntent, 0);
-		PendingIntent liveStreamPendingIntent = PendingIntent.getBroadcast(
-				context, appWidgetId, liveStreamIntent, 0);
-
-		RemoteViews remoteViews = new RemoteViews(context.getPackageName(),
-				R.layout.widget);
-		
-		remoteViews.setOnClickPendingIntent(R.id.button_status,
-				statusPendingIntent);
-		remoteViews.setOnClickPendingIntent(R.id.button_start,
-				startPendingIntent);
-		remoteViews.setOnClickPendingIntent(R.id.button_pause,
-				pausePendingIntent);
-		remoteViews.setOnClickPendingIntent(R.id.button_snapshot,
-				snapshotPendingIntent);
-		remoteViews.setOnClickPendingIntent(R.id.button_livestream,
-				liveStreamPendingIntent);
-
-		appWidgetManager.updateAppWidget(appWidgetId, remoteViews);
-		
-		try {
-			HostPreferences host = getWidgetHostPreferences(context, appWidgetId);
-			doAsyncAction(context, ACTION_WIDGET_STATUS, host, appWidgetId);
-		} catch (HostNotExistException e) {
-			updateWidget(appWidgetManager, remoteViews, false, "Host does not exist", "error", appWidgetId);
-		}
-	}
-
-	protected int getAppWidgerId(Bundle extras) {
+	
+	protected int getAppWidgetId(Bundle extras) {
 		int mAppWidgetId = -1;
 		if (extras != null) {
 			mAppWidgetId = extras.getInt(AppWidgetManager.EXTRA_APPWIDGET_ID,
@@ -209,22 +204,39 @@ public class MotionWidget extends AppWidgetProvider {
 
 	@Override
 	public void onReceive(final Context context, final Intent intent) {
-		int appWidgetId = getAppWidgerId(intent.getExtras());
+		int appWidgetId = getAppWidgetId(intent.getExtras());
 		String action = intent.getAction();
+		
+		Toast.makeText(context, action, Toast.LENGTH_SHORT).show();
 		
 		if (AppWidgetManager.ACTION_APPWIDGET_DELETED.equals(action)) {
             removeWidgetPreferences(context, appWidgetId);
         } else {
-        	SharedPreferences prefs = getSharedPreferences(context);
-        	try {
-				HostPreferences host = getWidgetHostPreferences(context, prefs, appWidgetId);
-				doAsyncAction(context, action, host, appWidgetId);
-			} catch (HostNotExistException e) {
-				removeWidgetPreferences(context, appWidgetId);
-			}
+//        	SharedPreferences prefs = getSharedPreferences(context);
+//        	try {
+//				HostPreferences host = getWidgetHostPreferences(context, prefs, appWidgetId);
+//				doAsyncAction(context, action, host, appWidgetId);
+//			} catch (HostNotExistException e) {
+//				removeWidgetPreferences(context, appWidgetId);
+//			}
+        	widgetAction(context, appWidgetId, action);
         }
 		
 		super.onReceive(context, intent);
+	}
+	
+	public static void widgetAction(Context context, int widgetId, String action) {
+		try {
+			HostPreferences host = getWidgetHostPreferences(context,
+					widgetId);
+			doAsyncAction(context, action, host, widgetId);
+		} catch (HostNotExistException e) {
+			RemoteViews remoteViews = new RemoteViews(context.getPackageName(),
+					R.layout.widget);
+			AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
+			updateWidget(appWidgetManager, remoteViews, false,
+					"Host does not exist", "error", widgetId);
+		}
 	}
 	
 	public static String getStatusText(HostPreferences host,
@@ -310,6 +322,6 @@ public class MotionWidget extends AppWidgetProvider {
 			return camera.getStatus();
 		}
 
-		return null;
+		return camera.getStatus();
 	}
 }

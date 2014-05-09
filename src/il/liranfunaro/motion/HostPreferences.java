@@ -132,7 +132,7 @@ public class HostPreferences implements Host, Comparable<HostPreferences> {
 	public void fillActivity(Activity activity) {
 		setText(activity, R.id.hostname, this.hostName);
 		setText(activity, R.id.hostExternalUrl, this.externalUrl.getFullUrl());
-		setText(activity, R.id.hostInternalUrl, this.internalUrl.getFullUrl());
+		setText(activity, R.id.hostInternalUrl, this.internalUrl != null ? this.internalUrl.getFullUrl() : null);
 		setText(activity, R.id.hostUsername, this.username);
 		setText(activity, R.id.hostPassword, this.password);
 	}
@@ -274,7 +274,9 @@ public class HostPreferences implements Host, Comparable<HostPreferences> {
 	private static void setText(Activity activity, int id, String text) {
 		Editable edit = getEditableText(activity, id);
 		edit.clear();
-		edit.append(text);
+		if(text != null) {
+			edit.append(text);
+		}
 	}
 	
 	private static String getText(Activity activity, int id) {

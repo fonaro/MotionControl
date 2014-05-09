@@ -14,6 +14,8 @@ public class SequenceInputStream extends InputStream {
 	private int startSequanceReturned;
 	private int stopSequanceMatchCount;
 	
+	private boolean endTransmittion = false;;
+	
 	public SequenceInputStream(InputStream in, int[] startSequance, int[] stopSequance) throws IllegalArgumentException {
 		validateInput(in, startSequance, stopSequance);
 		
@@ -22,6 +24,15 @@ public class SequenceInputStream extends InputStream {
 		this.stopSequance = stopSequance;
 		
 		restart();
+	}
+	
+	public boolean isEndTransittion() {
+		return endTransmittion;
+	}
+	
+	@Override
+	public int available() throws IOException {
+		return in.available();
 	}
 	
 	public void restart() {
@@ -70,14 +81,25 @@ public class SequenceInputStream extends InputStream {
 			stopSequanceMatchCount = 0;
 		}
 		
+		if(c == -1) {
+			setEndTransmittion();
+		}
+		
 		return c;
 	}
-
+	
+	private void setEndTransmittion() throws IOException {
+		restart();
+		in.close();
+		close();
+		endTransmittion = true;
+	}
+	
 	@Override
 	public int read() throws IOException {
 		if(!foundStart) {
 			if(!lookForStartSequance()) {
-				restart();
+				setEndTransmittion();
 				return -1;
 			} else {
 				foundStart = true;

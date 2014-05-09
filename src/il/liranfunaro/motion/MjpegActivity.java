@@ -53,6 +53,6 @@ public class MjpegActivity extends GenericCameraActivity {
 		super.onPause();
 		
 		AnimatedBitmapView mv = (AnimatedBitmapView) findViewById(R.id.mjpegView);
-		mv.stopPlayback();
+		mv.stopPlayback(true);
 	}
 }

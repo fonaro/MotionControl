@@ -17,7 +17,7 @@ public class MotionCameraClient {
 	protected static final String CONFIGURATION_LIST_URL_TEMPLATE = "/%s/config/list";
 	protected static final String WRITE_CONFIGURATIONS_URL_TEMPLATE = "/%s/config/writeyes";
 	
-	protected static final String CAMERA_CONF_STREAM_PORT = "stream_port";
+	protected static final String CAMERA_CONF_STREAM_PORT = "webcam_port";
 	
 	protected final String camera;
 	protected final MotionHostClient hostClient;
