@@ -18,6 +18,7 @@ public class MotionCameraClient {
 	protected static final String WRITE_CONFIGURATIONS_URL_TEMPLATE = "/%s/config/writeyes";
 	
 	protected static final String CAMERA_CONF_STREAM_PORT = "webcam_port";
+	protected static final String NEW_CAMERA_CONF_STREAM_PORT = "stream_port";
 	
 	protected final String camera;
 	protected final MotionHostClient hostClient;
@@ -90,7 +91,10 @@ public class MotionCameraClient {
 		
 		CameraConfiguration streamPortConf = conf.get(CAMERA_CONF_STREAM_PORT);
 		if(streamPortConf == null) {
-			return;
+			streamPortConf = conf.get(NEW_CAMERA_CONF_STREAM_PORT);
+			if(streamPortConf == null) {
+				return;
+			}
 		}
 		
 		String streamPort = streamPortConf.getValue();
