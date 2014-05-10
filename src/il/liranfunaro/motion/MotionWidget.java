@@ -207,7 +207,7 @@ public class MotionWidget extends AppWidgetProvider {
 		int appWidgetId = getAppWidgetId(intent.getExtras());
 		String action = intent.getAction();
 		
-		Toast.makeText(context, action, Toast.LENGTH_SHORT).show();
+//		Toast.makeText(context, action, Toast.LENGTH_SHORT).show();
 		
 		if (AppWidgetManager.ACTION_APPWIDGET_DELETED.equals(action)) {
             removeWidgetPreferences(context, appWidgetId);
