@@ -19,7 +19,6 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.widget.TextView;
-import android.widget.Toast;
 
 public class AnimatedBitmapView extends SurfaceView implements SurfaceHolder.Callback {
 	static final String TAG = "AnimatedBitmapView";
@@ -141,6 +140,13 @@ public class AnimatedBitmapView extends SurfaceView implements SurfaceHolder.Cal
 		}
 	}
 	
+	protected void render(Canvas canvas, Bitmap bitmap) {
+		calculateDestinationRect(bitmap);
+		
+		canvas.drawColor(Color.RED);
+		canvas.drawBitmap(bitmap, null, desinationRect, framePaint);
+	}
+	
 	public void redraw() {
 		final Bitmap bitmap = currentBitmap.get();
 		if(bitmap == null) {
@@ -149,12 +155,9 @@ public class AnimatedBitmapView extends SurfaceView implements SurfaceHolder.Cal
 		
 		synchronized (holder) {
 			Canvas canvas = holder.lockCanvas();
-			
+
 			try {
-				calculateDestinationRect(bitmap);
-				
-				canvas.drawColor(Color.RED);
-				canvas.drawBitmap(bitmap, null, desinationRect, framePaint);
+				render(canvas, bitmap);
 			} finally {
 				if (canvas != null) {
 					holder.unlockCanvasAndPost(canvas);
@@ -205,7 +208,7 @@ public class AnimatedBitmapView extends SurfaceView implements SurfaceHolder.Cal
 		
 		public void startAnimation(AnimatedBitmap animatedBitmap) throws IOException {
 			while (playing.get()) {
-				setFrame(animatedBitmap.readNextFrame());
+				setFrame(animatedBitmap.readNextFrame(desinationRect));
 				
 				if (showFps) {
 					++frameCounter;
