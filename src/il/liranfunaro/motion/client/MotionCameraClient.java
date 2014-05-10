@@ -98,7 +98,7 @@ public class MotionCameraClient {
 		}
 		
 		String streamPort = streamPortConf.getValue();
-		if(streamPort == null || streamPort.isEmpty()) {
+		if(streamPort == null || streamPort.isEmpty() || streamPort.equals("0")) {
 			return;
 		}
 		
