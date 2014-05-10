@@ -68,17 +68,16 @@ public class MotionCameraClient {
 					String result = streamScanner.findWithinHorizon(CameraStatus.PATTERN, 0);
 	
 					if (result != null) {
-						try {
-							return CameraStatus.valueOf(result);
-						} catch (IllegalArgumentException e) {}
+						return CameraStatus.valueOf(result);
 					}
-					
-					return CameraStatus.UNKNOWN;
+				} catch (IllegalArgumentException e) {
 				} finally {
 					if(streamScanner != null) {
 						streamScanner.close();
 					}
 				}
+				
+				return CameraStatus.UNKNOWN;
 			}
 		});
 	}
