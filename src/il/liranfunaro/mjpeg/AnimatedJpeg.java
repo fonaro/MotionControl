@@ -6,7 +6,6 @@ import java.io.InputStream;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.Rect;
 
 public class AnimatedJpeg extends MjpegInputStream implements AnimatedBitmap {
 	public final static int DEFAULT_TEMP_STORAGE_SIZE = 1 << 22;
@@ -44,7 +43,7 @@ public class AnimatedJpeg extends MjpegInputStream implements AnimatedBitmap {
 //	int c  = 0;
 //	int cf = 0;
 	@Override
-	public Bitmap readNextFrame(Rect rect) throws IOException {
+	public Bitmap readNextFrame() throws IOException {
 		bufferd.restartBuffer();
 
 		Bitmap bitmap = null;

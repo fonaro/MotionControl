@@ -7,5 +7,4 @@
         android:selectAllOnFocus="true"
         android:singleLine="true"
         android:title="@string/pref_connection_timeout" />
-
 </PreferenceScreen>
