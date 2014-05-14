@@ -50,6 +50,5 @@ public class GenericCameraActivity extends Activity {
 	}
 	
 	protected void requestWindowFeatures() {
-		
 	}
 }

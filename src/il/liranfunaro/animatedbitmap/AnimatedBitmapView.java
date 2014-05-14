@@ -1,4 +1,4 @@
-package il.liranfunaro.mjpeg;
+package il.liranfunaro.animatedbitmap;
 
 import java.io.IOException;
 import java.util.Timer;
@@ -373,16 +373,12 @@ public class AnimatedBitmapView extends SurfaceView implements
 		}
 	}
 	
-	
-	public interface AnimationStreamProducer {
-		public void getAnimationStream(AnimationTask task);
-	}
-	
-	public class AnimationTask extends AsyncTask<AnimationStreamProducer, Integer, Void> {
+	public class AnimationTask extends AsyncTask<AnimationStreamProducer, Integer, Void> implements AnimatedBitmapTask {
 		public AnimationStreamProducer producer = null;
 		protected long startTime = 0;
 		protected int frameCounter = 0;
 		
+		@Override
 		public void startAnimation(AnimatedBitmap animatedBitmap) throws IOException {
 			while (playing.get()) {
 				setFrame(animatedBitmap.readNextFrame());

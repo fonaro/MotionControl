@@ -1,4 +1,7 @@
-package il.liranfunaro.mjpeg;
+package il.liranfunaro.mjpeg.android;
+
+import il.liranfunaro.animatedbitmap.AnimatedBitmap;
+import il.liranfunaro.mjpeg.MjpegInputStream;
 
 import java.io.BufferedInputStream;
 import java.io.IOException;

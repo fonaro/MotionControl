@@ -326,7 +326,7 @@ public class HostListAdapter extends BaseExpandableListAdapter {
 		
 		@Override
 		public void onClick(View v) {
-			Intent intent = new Intent(context, MjpegActivity.class);
+			Intent intent = new Intent(context, LiveCameraActivity.class);
 			GenericCameraActivity.setIntentParameters(intent, hosts[groupPosition].getUUID(), cameraNumber);
 			itsActivity.startActivity(intent);
 		}

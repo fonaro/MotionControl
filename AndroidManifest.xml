@@ -15,7 +15,7 @@
         android:icon="@drawable/ic_launcher"
         android:label="@string/app_name" >
          <activity
-            android:name="il.liranfunaro.motion.MjpegActivity"
+            android:name="il.liranfunaro.motion.LiveCameraActivity"
             android:label="@string/title_mjpeg"
             android:parentActivityName="il.liranfunaro.motion.MainActivity" >
             <meta-data

@@ -18,7 +18,6 @@ import android.os.Bundle;
 import android.text.format.DateFormat;
 import android.view.View;
 import android.widget.RemoteViews;
-import android.widget.Toast;
 
 public class MotionWidget extends AppWidgetProvider {
 	public static final String PREFS_NAME = MotionWidget.class.toString();
@@ -207,18 +206,9 @@ public class MotionWidget extends AppWidgetProvider {
 		int appWidgetId = getAppWidgetId(intent.getExtras());
 		String action = intent.getAction();
 		
-//		Toast.makeText(context, action, Toast.LENGTH_SHORT).show();
-		
 		if (AppWidgetManager.ACTION_APPWIDGET_DELETED.equals(action)) {
             removeWidgetPreferences(context, appWidgetId);
         } else {
-//        	SharedPreferences prefs = getSharedPreferences(context);
-//        	try {
-//				HostPreferences host = getWidgetHostPreferences(context, prefs, appWidgetId);
-//				doAsyncAction(context, action, host, appWidgetId);
-//			} catch (HostNotExistException e) {
-//				removeWidgetPreferences(context, appWidgetId);
-//			}
         	widgetAction(context, appWidgetId, action);
         }
 		
@@ -315,7 +305,7 @@ public class MotionWidget extends AppWidgetProvider {
 			camera.snapshot();
 			return camera.getStatus();
 		} else if(action.equals(ACTION_WIDGET_LIVE_STREAM)) {
-			Intent intent = new Intent(context, MjpegActivity.class);
+			Intent intent = new Intent(context, LiveCameraActivity.class);
 			intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 			GenericCameraActivity.setIntentParameters(intent, host.getUUID(), camera.getCameraNumber());
 			context.startActivity(intent);

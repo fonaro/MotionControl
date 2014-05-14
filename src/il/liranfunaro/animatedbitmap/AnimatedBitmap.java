@@ -1,4 +1,4 @@
-package il.liranfunaro.mjpeg;
+package il.liranfunaro.animatedbitmap;
 
 import java.io.IOException;
 
