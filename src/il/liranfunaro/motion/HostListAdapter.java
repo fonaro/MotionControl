@@ -291,7 +291,6 @@ public class HostListAdapter extends BaseExpandableListAdapter {
 	}
 	
 	public class OnWidgetSelectCameraListner implements OnClickListener {
-		
 		private final int groupPosition;
 		private final String cameraNumber;
 		
@@ -302,9 +301,7 @@ public class HostListAdapter extends BaseExpandableListAdapter {
 		
 		@Override
 		public void onClick(View v) {
-			MotionWidget.setWidgetPreferences(context, myAppWidgetId, hosts[groupPosition].getUUID().toString(), cameraNumber);
-			MotionWidget.updateWidget(context, myAppWidgetId);
-			MotionWidget.widgetAction(context, myAppWidgetId, MotionWidget.ACTION_WIDGET_STATUS);
+			MotionWidgetProvider.initWidget(context, myAppWidgetId, hosts[groupPosition].getUUID().toString(), cameraNumber);
 			
 			Intent resultValue = new Intent();
 			resultValue.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,
