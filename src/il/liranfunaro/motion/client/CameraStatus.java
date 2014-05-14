@@ -1,9 +1,10 @@
 package il.liranfunaro.motion.client;
 
+import java.util.Locale;
 import java.util.regex.Pattern;
 
 public enum CameraStatus {
-	ACTIVE,PAUSE,UNKNOWN;
+	ACTIVE,PAUSE,UNKNOWN,LOADING;
 	
 	public static final Pattern PATTERN = CameraStatus.getPattern();
 	
@@ -22,6 +23,11 @@ public enum CameraStatus {
 		}
 		result.append(')');
 		
-		return Pattern.compile(result.toString());
+		return Pattern.compile(result.toString(), Pattern.CASE_INSENSITIVE);
+	}
+	
+	@Override
+	public String toString() {
+		return super.toString().toLowerCase(Locale.US);
 	}
 }
