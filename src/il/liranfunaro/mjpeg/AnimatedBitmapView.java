@@ -14,8 +14,10 @@ import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.os.AsyncTask;
+import android.support.v4.view.GestureDetectorCompat;
 import android.util.AttributeSet;
 import android.util.Log;
+import android.view.GestureDetector.SimpleOnGestureListener;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.SurfaceHolder;
@@ -24,37 +26,54 @@ import android.view.View;
 import android.view.animation.AccelerateDecelerateInterpolator;
 import android.widget.TextView;
 
-public class AnimatedBitmapView extends SurfaceView implements SurfaceHolder.Callback {
+public class AnimatedBitmapView extends SurfaceView implements
+		SurfaceHolder.Callback {
 	static final String TAG = "AnimatedBitmapView";
 
-	private AnimationTask task = new AnimationTask();
-	boolean showFps = false;
-	
-	// Indicates if the animation is running 
-	private final AtomicBoolean playing = new AtomicBoolean(false);
-
-	Paint framePaint = new Paint();
-	TextView fpsTextView = null;
-	
-	int dispWidth;
-	int dispHeight;
-	
-	SurfaceHolder holder;
-	AtomicReference<Bitmap> currentBitmap = new AtomicReference<Bitmap>(null);
-	protected AtomicBoolean isFirstFrame = new AtomicBoolean(true);
-	protected Matrix transformation = new Matrix();
-	protected ScaleGestureDetector scaleGestureDetector = null;  
-	
-	protected int frameCounter = 0;
-	protected long start = 0;
-	
+	// Parameter: background color
 	protected int backgroundColor = Color.DKGRAY;
 	
-	protected final AccelerateDecelerateInterpolator interpolator = new AccelerateDecelerateInterpolator();
+	// Parameter: holds the frame-per-second text box
+	protected TextView fpsTextView = null;
 	
-	public void setFpsView(TextView textView) {
-		this.fpsTextView = textView;
-	}
+	// Parameter: will the frame-per-second text box is drawn
+	protected boolean showFps = false;
+	
+	// An AsyncTask that render the animation frame-by-frame
+	protected AnimationTask animationTask = new AnimationTask();
+	
+	// True if no frame had been drawn yet
+	protected AtomicBoolean isFirstFrame = new AtomicBoolean(true);
+	
+	// Indicates if the animation is running 
+	protected final AtomicBoolean playing = new AtomicBoolean(false);
+
+	// The currently displayed bitmap
+	protected AtomicReference<Bitmap> currentBitmap = new AtomicReference<Bitmap>(null);
+	
+	// Used to draw the animation frame
+	protected final Paint framePaint = new Paint();
+
+	// The transformation matrix for the video square
+	protected Matrix transformation = new Matrix();
+	
+	// Indicate the display width
+	protected int dispWidth;
+	
+	// Indicate the diaply height
+	protected int dispHeight;
+	
+	// SurfaceHolder holder
+	protected final SurfaceHolder holder = getHolder();
+	
+	/**
+	 * Detectors for gestures
+	 */
+	protected ScaleGestureDetector scaleGestureDetector;
+	protected GestureDetectorCompat gustureDetector; 
+	
+	// Used to animate the square when it had been moved out of bound
+	protected final static AccelerateDecelerateInterpolator animationInterpolator = new AccelerateDecelerateInterpolator();
 	
 	public AnimatedBitmapView(Context context, AttributeSet attrs) {
 		super(context, attrs);
@@ -65,9 +84,34 @@ public class AnimatedBitmapView extends SurfaceView implements SurfaceHolder.Cal
 		super(context);
 		init(context);
 	}
+	
+	public void setFpsView(TextView textView) {
+		this.fpsTextView = textView;
+		applyFpsBoxVisibility();
+	}
+	
+	public void setBackgroundColor(int backgroundColor) {
+		this.backgroundColor = backgroundColor;
+	}
+	
+	public void showFps(boolean showFps) {
+		this.showFps = showFps;
+		applyFpsBoxVisibility();
+	}
+	
+	protected void applyFpsBoxVisibility() {
+		if(fpsTextView != null) {
+			fpsTextView.setVisibility(showFps ? VISIBLE : GONE);
+		}
+	}
 
+	/**
+	 * Initiate the view (called by C'tors)
+	 * 
+	 * @param context
+	 *            the context of the view
+	 */
 	private void init(Context context) {
-		holder = getHolder();
 		holder.addCallback(this);
 
 		setFocusable(true);
@@ -75,47 +119,76 @@ public class AnimatedBitmapView extends SurfaceView implements SurfaceHolder.Cal
 		dispWidth = getWidth();
 		dispHeight = getHeight();
 		
-		scaleGestureDetector = new ScaleGestureDetector(context, new ScaleListener());
+		scaleGestureDetector = new ScaleGestureDetector(context, new  ScaleGestureDetector.SimpleOnScaleGestureListener() {
+		    @Override
+		    public boolean onScale(ScaleGestureDetector detector) {
+		    	float scale = detector.getScaleFactor();
+		    	// Don't let the object get too small or too large.
+		    	scale = Math.max(0.1f, Math.min(scale, 5.0f));
+		    	
+		    	float focusX = detector.getFocusX();
+		    	float focusY = detector.getFocusY();
+		    	
+		    	synchronized (transformation) {
+		    		transformation.postTranslate(-focusX, -focusY);
+		    		transformation.postScale(scale, scale);
+		    		transformation.postTranslate(focusX, focusY);
+				}
+		    	
+		        redraw();
+		        return true;
+		    }
+		});
+		
+		// Instantiate the gesture detector with the
+        // application context and an implementation of
+        // GestureDetector.OnGestureListener
+        gustureDetector = new GestureDetectorCompat(getContext(),new SimpleOnGestureListener() {
+        	@Override
+            public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX,
+                    float distanceY) {
+        		synchronized (transformation) {
+					transformation.postTranslate(-distanceX, -distanceY);
+				}
+				redraw();
+                return true;
+            }
+        });
+        
+        // Set the gesture detector as the double tap
+        // listener.
+        gustureDetector.setOnDoubleTapListener(new SimpleOnGestureListener() {
+        	@Override
+        	public boolean onDoubleTap(MotionEvent e) {
+        		calculateBestFitTransformation();
+        		redraw();
+        		return true;
+        	}
+        });
 		
 		setOnTouchListener(new OnTouchListener() {
-			boolean startOnBitmap = true;
-			float startX,startY;
 			
 			@Override
 			public boolean onTouch(View v, MotionEvent event) {
-				scaleGestureDetector.onTouchEvent(event);
+				boolean isDectected = scaleGestureDetector.onTouchEvent(event);
+				isDectected |= gustureDetector.onTouchEvent(event);
 				
-				switch(event.getAction()) {
-				case MotionEvent.ACTION_DOWN:
-					startX = event.getX();
-					startY = event.getY();
-					//startOnBitmap = desinationRect.contains((int)startX, (int)startY);
-					return true;
-				case MotionEvent.ACTION_MOVE:
-					if(!startOnBitmap) return false;
-					
-					transformation.postTranslate((int) (event.getX() - startX), (int) (event.getY() - startY));
-					startX = event.getX();
-					startY = event.getY();
-					redraw();
-					return true;
-				case MotionEvent.ACTION_UP:
-					if(!startOnBitmap) return false;
+				if(event.getAction() == MotionEvent.ACTION_UP) {
 					adjustOffset();
-					redraw();
 					return true;
 				}
-				return false;
+				
+				return isDectected;
 			}
 		});
 	}
-
+	
 	public void startPlayback(AnimationStreamProducer producer) {
 		if(playing.compareAndSet(false, true)) {
 			if(producer != null) {
-				task.execute(producer);
+				animationTask.execute(producer);
 			} else {
-				task.execute();
+				animationTask.execute();
 			}
 		}
 	}
@@ -128,7 +201,7 @@ public class AnimatedBitmapView extends SurfaceView implements SurfaceHolder.Cal
 		if(playing.compareAndSet(true, false)) {
 			while (wait) {
 				try {
-					task.get();
+					animationTask.get();
 					return;
 				} catch (Exception e) {
 					Log.e(TAG, e.getMessage(), e);
@@ -149,15 +222,19 @@ public class AnimatedBitmapView extends SurfaceView implements SurfaceHolder.Cal
 
 	@Override
 	public void surfaceChanged(SurfaceHolder holder, int f, int w, int h) {
-		synchronized (holder) {
-			dispWidth = w;
-			dispHeight = h;
-		}
+		dispWidth = w;
+		dispHeight = h;
 		
 		redraw();
 	}
 
-	public void setFrame(Bitmap bitmap) {
+	/**
+	 * Sets new frame and redraw the view
+	 * 
+	 * @param bitmap
+	 *            the new frame
+	 */
+	protected void setFrame(Bitmap bitmap) {
 		if(bitmap != null) {
 			currentBitmap.set(bitmap);
 			redraw();
@@ -170,9 +247,14 @@ public class AnimatedBitmapView extends SurfaceView implements SurfaceHolder.Cal
 		}
 		
 		canvas.drawColor(backgroundColor);
-		canvas.drawBitmap(bitmap, transformation, framePaint);
+		synchronized (transformation) {
+			canvas.drawBitmap(bitmap, transformation, framePaint);
+		}
 	}
 	
+	/**
+	 * Redraw the view
+	 */
 	public void redraw() {
 		final Bitmap bitmap = currentBitmap.get();
 		if(bitmap == null) {
@@ -180,6 +262,9 @@ public class AnimatedBitmapView extends SurfaceView implements SurfaceHolder.Cal
 		}
 		
 		Canvas canvas = holder.lockCanvas();
+		if(canvas == null) {
+			return;
+		}
 
 		try {
 			render(canvas, bitmap);
@@ -190,12 +275,13 @@ public class AnimatedBitmapView extends SurfaceView implements SurfaceHolder.Cal
 		}
 	}
 
-	public void showFps(boolean b) {
-		showFps = b;
-	}
-	
+	/**
+	 * Adjust the square when it is out of bound
+	 */
 	private void adjustOffset() {
 		float dx = 0.0f, dy = 0.0f;
+		boolean noChangeX = false;
+		boolean noChangeY = false;
 		
 		final Bitmap bitmap = currentBitmap.get();
 		if(bitmap == null) {
@@ -203,85 +289,70 @@ public class AnimatedBitmapView extends SurfaceView implements SurfaceHolder.Cal
 		}
 		
 		RectF desinationRect = new RectF(0,0,bitmap.getWidth(),bitmap.getHeight());
-		transformation.mapRect(desinationRect);
+		synchronized (transformation) {
+			transformation.mapRect(desinationRect);
+		}
 		
 		if(desinationRect.left > 0 && desinationRect.right > dispWidth) {
 			dx -= Math.min(desinationRect.left, desinationRect.right - dispWidth);
 		} else if(desinationRect.left < 0 && desinationRect.right < dispWidth) {
 			dx += Math.min(-desinationRect.left, dispWidth - desinationRect.right);
+		} else {
+			noChangeX = true;
 		}
 		
 		if(desinationRect.top > 0 && desinationRect.bottom > dispHeight) {
 			dy -= Math.min(desinationRect.top, desinationRect.bottom - dispHeight);
 		} else if(desinationRect.top < 0 && desinationRect.bottom < dispHeight) {
 			dy += Math.min(-desinationRect.top, dispHeight - desinationRect.bottom);
+		} else {
+			noChangeY = true;
 		}
 		
-		new MatrixTranslateAnimator(dx, dy, 300, 30).start();
-	}
-	
-	private class MatrixTranslateAnimator {
-		final private Matrix origMat;
-		final private float dx;
-		final private float dy;
-		final private long durationMS;
-		final private long intervalsMS;
-		
-		public MatrixTranslateAnimator(float dx, float dy, long durationMS, long intervalsMS) {
-			super();
-			this.origMat = new Matrix(transformation);
-			this.dx = dx;
-			this.dy = dy;
-			this.durationMS = durationMS;
-			this.intervalsMS = intervalsMS;
+		if(noChangeX && noChangeY) {
+			return;
 		}
 		
-		void start() {
+		final long durationMS = 300;
+		final long intervalsMS = 30;
+		
+		final Matrix origMat = new Matrix();
+		synchronized (transformation) {
+			origMat.set(transformation);
+		}
+		
+		final float fdx = dx, fdy = dy;
+		
+		final Timer timer = new Timer(true);
+		timer.scheduleAtFixedRate(new TimerTask() {
+			long start = System.currentTimeMillis();
+			long end = start + durationMS;
 			
-			final Timer timer = new Timer(true);
-			timer.scheduleAtFixedRate(new TimerTask() {
-				long start = System.currentTimeMillis();
-				long end = start + durationMS;
+			@Override
+			public void run() {
+				long cur = Math.min(end, System.currentTimeMillis());
+				float  t = animationInterpolator.getInterpolation((float)(cur - start)/(float)durationMS);
 				
-				@Override
-				public void run() {
-					long cur = Math.min(end, System.currentTimeMillis());
-					float  t = interpolator.getInterpolation((float)(cur - start)/(float)durationMS);
+				synchronized (transformation) {
 					transformation.set(origMat);
-					transformation.postTranslate(dx*t, dy*t);
-					redraw();
-					
-					if(cur == end) {
-						cancel();
-						timer.cancel();
-						timer.purge();
-					}
+					transformation.postTranslate(fdx*t, fdy*t);
 				}
-			}, 0, intervalsMS);
-		}
+				redraw();
+				
+				if(cur == end) {
+					cancel();
+					timer.cancel();
+					timer.purge();
+				}
+			}
+		}, 0, intervalsMS);
 	}
 	
-	private class ScaleListener extends ScaleGestureDetector.SimpleOnScaleGestureListener {
-	    @Override
-	    public boolean onScale(ScaleGestureDetector detector) {
-	    	if(!detector.isInProgress()) {
-	    		return false;
-	    	}
-	    	
-	    	float scale = detector.getScaleFactor();
-	    	// Don't let the object get too small or too large.
-	    	scale = Math.max(0.1f, Math.min(scale, 5.0f));
-	    	
-	    	float focusX = detector.getFocusX();
-	    	float focusY = detector.getFocusY();
-	    	
-	    	transformation.postTranslate(-focusX, -focusY);
-	    	transformation.postScale(scale, scale);
-	    	transformation.postTranslate(focusX, focusY);
-	    	
-	        redraw();
-	        return true;
-	    }
+	private void calculateBestFitTransformation() {
+		final Bitmap bitmap = currentBitmap.get();
+		if(bitmap != null) {
+			calculateBestFitTransformation(bitmap);
+		}
 	}
 	
 	private void calculateBestFitTransformation(Bitmap bitmap) {
@@ -291,13 +362,17 @@ public class AnimatedBitmapView extends SurfaceView implements SurfaceHolder.Cal
 	private void calculateBestFitTransformation(int bitmapWidth, int bitmapHeight) {
 		// Try full width
 		float scale = (float)dispWidth / (float)bitmapWidth;
+		
 		if(bitmapHeight * scale > dispHeight) {
 			scale = (float)dispHeight / (float)bitmapHeight;
 		}
 		
-		transformation.postScale(scale, scale);
-		transformation.postTranslate((dispWidth - scale*bitmapWidth) / 2, (dispHeight - scale*bitmapHeight) / 2);
+		synchronized (transformation) {
+			transformation.setScale(scale, scale);
+			transformation.postTranslate((dispWidth - scale*bitmapWidth) / 2, (dispHeight - scale*bitmapHeight) / 2);
+		}
 	}
+	
 	
 	public interface AnimationStreamProducer {
 		public void getAnimationStream(AnimationTask task);
@@ -305,6 +380,8 @@ public class AnimatedBitmapView extends SurfaceView implements SurfaceHolder.Cal
 	
 	public class AnimationTask extends AsyncTask<AnimationStreamProducer, Integer, Void> {
 		public AnimationStreamProducer producer = null;
+		protected long startTime = 0;
+		protected int frameCounter = 0;
 		
 		public void startAnimation(AnimatedBitmap animatedBitmap) throws IOException {
 			while (playing.get()) {
@@ -313,10 +390,10 @@ public class AnimatedBitmapView extends SurfaceView implements SurfaceHolder.Cal
 				if (showFps) {
 					++frameCounter;
 					
-					if ((System.currentTimeMillis() - start) >= 1000) {
+					if ((System.currentTimeMillis() - startTime) >= 1000) {
 						publishProgress(frameCounter);
 						frameCounter = 0;
-						start = System.currentTimeMillis();
+						startTime = System.currentTimeMillis();
 					}
 				}
 			}

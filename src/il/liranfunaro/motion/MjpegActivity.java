@@ -9,6 +9,7 @@ import il.liranfunaro.motion.client.MotionHostClient.RequestSuccessCallback;
 import java.io.IOException;
 import java.io.InputStream;
 
+import android.graphics.Color;
 import android.os.Bundle;
 import android.view.Window;
 import android.view.WindowManager;
@@ -25,6 +26,7 @@ public class MjpegActivity extends GenericCameraActivity {
 
 		mv.setFpsView(fpsTextView);
 		mv.showFps(true);
+		mv.setBackgroundColor(Color.DKGRAY);
 		mv.startPlayback(new AnimationStreamProducer() {
 
 			@Override
