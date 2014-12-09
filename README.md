@@ -7,10 +7,10 @@ http://www.lavrsen.dk/foswiki/bin/view/Motion/WebHome
 Motion Control is open source project, continuing of Motion Widget app.
 
 Features
-1. Check the camera status
-2. Start the camera
-3. Pause the camera
-4. View live feed from the camera
+* Check the motion detection status (on/off)
+* Start the motion detection
+* Pause the motion detection
+* View live feed from the camera (webcam)
 
 License
 =======
